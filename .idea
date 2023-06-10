@@ -1,0 +1,12 @@
+AnnexFS Design
+--------------
+
+--Interface---------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+Invoke AnnexFS Python3 application from finder into simple GUI.
+
+--Requirements------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+-> User must select a target disk to be able to use AnnexFS
+-> All symlinks have a special looking icon to distingiush them from files and directories that are resident on main disk.
+-> All symlinks can only be created and destroyed using AnnexFS to avoid potential for dangling symlinks to directories and files.
