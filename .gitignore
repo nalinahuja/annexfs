@@ -1,2 +1,2 @@
-# Application Configuration Files
-config.yml
+# AnnexFS Configuration File
+/src/config.yml
