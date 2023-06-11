@@ -20,13 +20,13 @@ if (__name__ == "__main__"):
     action_arguments.add_argument("--delete", help = "delete annexfs entry", type = str)
 
     # Add Transfer Arguments
-    action_arguments.add_argument("--transfer-from", help = "create annexfs entry and save files", type = str)
-    action_arguments.add_argument("--transfer-to", help = "restore files and delete annexfs entry", type = str)
+    action_arguments.add_argument("--transfer-from", help = "transfer files from main to annexfs", type = str)
+    action_arguments.add_argument("--transfer-to", help = "transfer files from annexfs to main", type = str)
 
     # Parse Arguments
     args = parser.parse_args()
 
-    # Define Error
+    # Declare Error Return
     err = None
 
     try:

@@ -1,7 +1,7 @@
 # Developed By Nalin Ahuja, nalinahuja
 
 import os
-import yaml
+import conf
 import shutil
 
 from util import cli
@@ -10,33 +10,25 @@ from util import hash
 # End Imports------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # Define AnnexFS Root Path
-ANNEXFS_ROOT = None
-
-# Configure AnnexFS Root Path
-with open(os.path.join(os.path.dirname(__file__), "config.yml"), "r") as file:
-    # Load YAML Configuration File
-    config = yaml.safe_load(file)
-
-    # Set AnnexFS Root Path
-    ANNEXFS_ROOT = config["ANNEXFS_ROOT"]
-
-# Verify AnnexFS Root Path Is Set
-if (ANNEXFS_ROOT is None):
-    # Raise Error
-    raise (ValueError("annexfs root is None"))
+__ANNEXFS_ROOT = conf.mdata["ANNEXFS_ROOT"]
 
 # End Constants----------------------------------------------------------------------------------------------------------------------------------------------------------
 
 def sanity_checks(func):
-    # Verify AnnexFS Root Exists
-    if (not(os.path.exists(ANNEXFS_ROOT))):
+    # Verify AnnexFS Root Path Is Set
+    if (__ANNEXFS_ROOT is None):
         # Raise Error
-        raise FileNotFoundError(f"annexfs root {cli.U}{ANNEXFS_ROOT}{cli.N} does not exist")
+        raise ValueError("annexfs root is None")
+
+    # Verify AnnexFS Root Exists
+    elif (not(os.path.exists(__ANNEXFS_ROOT))):
+        # Raise Error
+        raise FileNotFoundError(f"annexfs root {cli.U}{__ANNEXFS_ROOT}{cli.N} does not exist")
 
     # Verify AnnexFS Root Is A Directory
-    elif (not(os.path.isdir(ANNEXFS_ROOT))):
+    elif (not(os.path.isdir(__ANNEXFS_ROOT))):
         # Raise Error
-        raise NotADirectoryError(f"annexfs root {cli.U}{ANNEXFS_ROOT}{cli.N} is not a directory")
+        raise NotADirectoryError(f"annexfs root {cli.U}{__ANNEXFS_ROOT}{cli.N} is not a directory")
 
     # Return Function Reference
     return (func)
@@ -54,7 +46,7 @@ def create(ent_path):
         return (FileExistsError(f"entry path {cli.U}{ent_path}{cli.N} exists"))
 
     # Form Path To Enclosing Directory
-    enc_path = os.path.join(ANNEXFS_ROOT, hash.md5(ent_path))
+    enc_path = os.path.join(__ANNEXFS_ROOT, hash.md5(ent_path))
 
     # Verify Path To Enclosing Directory Does Not Exist
     if (os.path.exists(enc_path)):
@@ -99,7 +91,7 @@ def delete(link_path):
         return (FileNotFoundError(f"link path {cli.U}{link_path}{cli.N} does not exist"))
 
     # Verify Destination Path Is An Internal Symbolic Link
-    elif (not(os.path.islink(link_path)) or not(os.path.realpath(link_path).startswith(ANNEXFS_ROOT))):
+    elif (not(os.path.islink(link_path)) or not(os.path.realpath(link_path).startswith(__ANNEXFS_ROOT))):
         # Return Error
         return (ValueError(f"destination path {cli.U}{link_path}{cli.N} is not an internal symbolic link"))
 
@@ -151,19 +143,19 @@ def transfer_from(src_path):
         return (FileNotFoundError(f"source path {cli.U}{src_path}{cli.N} does not exist"))
 
     # Verify Source Path Is An External Symbolic Link
-    elif (os.path.islink(src_path) and os.path.realpath(src_path).startswith(ANNEXFS_ROOT)):
+    elif (os.path.islink(src_path) and os.path.realpath(src_path).startswith(__ANNEXFS_ROOT)):
         # Return Error
         return (ValueError(f"source path {cli.U}{src_path}{cli.N} is not an external symbolic link"))
 
     # Form Path To Enclosing Directory
-    enc_path = os.path.join(ANNEXFS_ROOT, hash.md5(src_path))
+    enc_path = os.path.join(__ANNEXFS_ROOT, hash.md5(src_path))
 
     # Verify Path To Enclosing Directory Does Not Exist
     if (os.path.exists(enc_path)):
         # Return Error
         return (FileExistsError(f"annexfs has stored {cli.U}{src_path}{cli.N}"))
 
-    # Define Source Path Components
+    # Declare Source Path Components
     src_bname = src_fname = None
 
     # Check If Source Path Points To A File
@@ -256,7 +248,7 @@ def transfer_to(dst_path):
         return (FileNotFoundError(f"destination path {cli.U}{dst_path}{cli.N} does not exist"))
 
     # Verify Destination Path Is An Internal Symbolic Link
-    elif (not(os.path.islink(dst_path)) or not(os.path.realpath(dst_path).startswith(ANNEXFS_ROOT))):
+    elif (not(os.path.islink(dst_path)) or not(os.path.realpath(dst_path).startswith(__ANNEXFS_ROOT))):
         # Return Error
         return (ValueError(f"destination path {cli.U}{dst_path}{cli.N} is not an internal symbolic link"))
 
@@ -268,7 +260,7 @@ def transfer_to(dst_path):
         # Return Error
         return (FileNotFoundError(f"annexfs has not stored {cli.U}{dst_path}{cli.N}"))
 
-    # Define Source Path Components
+    # Declare Source Path Components
     src_bname = src_fname = None
 
     # Check If Source Path Points To A File
