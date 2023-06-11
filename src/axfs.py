@@ -65,14 +65,19 @@ def create(ent_path):
 
         # Set Enclosing Directory Permissions
         os.chmod(enc_path, 0o555)
-    except Exception:
+    except (KeyboardInterrupt, Exception) as e:
         # Verify Enclosing Directory Exists
         if (os.path.exists(enc_path)):
             # Delete Enclosing Directory
             shutil.rmtree(enc_path)
 
-        # Return Error
-        return (OSError("annexfs could not create new entry"))
+        # Determine Error Handling
+        if (isinstance(e, KeyboardInterrupt)):
+            # Raise Interrupt
+            raise e
+        else:
+            # Return Exception
+            return (OSError("annexfs could not create new entry"))
 
     # Create Symbolic Link To Directory
     os.symlink(dst_path, ent_path)
@@ -115,7 +120,7 @@ def delete(link_path):
 
         # Remove Original Source Directory
         shutil.rmtree(enc_path)
-    except Exception:
+    except (KeyboardInterrupt, Exception) as e:
         # Verify Enclosing Directory Exists
         if (os.path.exists(enc_path)):
             # Set Enclosing Directory Permissions
@@ -124,8 +129,13 @@ def delete(link_path):
             # Recreate Symbolic Link
             os.symlink(dst_path, link_path)
 
-        # Return Error
-        return (OSError("annexfs could not delete existing entry"))
+        # Determine Error Handling
+        if (isinstance(e, KeyboardInterrupt)):
+            # Raise Interrupt
+            raise e
+        else:
+            # Return Exception
+            return (OSError("annexfs could not delete existing entry"))
 
     # Return Success
     return (None)
@@ -178,14 +188,19 @@ def transfer_from(src_path):
 
         # Set Enclosing Directory Permissions
         os.chmod(enc_path, 0o555)
-    except Exception:
+    except (KeyboardInterrupt, Exception) as e:
         # Verify Enclosing Directory Exists
         if (os.path.exists(enc_path)):
             # Delete Enclosing Directory
             shutil.rmtree(enc_path)
 
-        # Return Error
-        return (OSError("annexfs could not create new entry"))
+        # Determine Error Handling
+        if (isinstance(e, KeyboardInterrupt)):
+            # Raise Interrupt
+            raise e
+        else:
+            # Return Exception
+            return (OSError("annexfs could not create new entry"))
 
     # Determine Transfer Type
     if (not(src_fname is None)):
@@ -196,12 +211,17 @@ def transfer_from(src_path):
         try:
             # Copy Source File To Destination Directory
             shutil.copy2(src_file, dst_path, follow_symlinks = False)
-        except Exception:
+        except (KeyboardInterrupt, Exception) as e:
             # Delete Enclosing Directory
             shutil.rmtree(enc_path)
 
-            # Return Error
-            return (OSError("annexfs could not transfer file to new entry"))
+            # Determine Error Handling
+            if (isinstance(e, KeyboardInterrupt)):
+                # Raise Interrupt
+                raise e
+            else:
+                # Return Exception
+                return (OSError("annexfs could not transfer file to new entry"))
         else:
             # TODO: Verify Source And Destination Sizes Are Equal
 
@@ -219,12 +239,17 @@ def transfer_from(src_path):
         try:
             # Copy Files From Source To Destination
             shutil.copytree(src_dir, dst_path, dirs_exist_ok = True)
-        except Exception:
+        except (KeyboardInterrupt, Exception) as e:
             # Delete Enclosing Directory
             shutil.rmtree(enc_path)
 
-            # Return Error
-            return (OSError("annexfs could not transfer directory to new entry"))
+            # Determine Error Handling
+            if (isinstance(e, KeyboardInterrupt)):
+                # Raise Interrupt
+                raise e
+            else:
+                # Return Exception
+                return (OSError("annexfs could not transfer directory to new entry"))
         else:
             # TODO: Verify Source And Destination Sizes Are Equal
 
@@ -277,9 +302,19 @@ def transfer_to(dst_path):
     try:
         # Remove Symbolic Link
         os.remove(dst_path)
-    except Exception:
-        # Return Error
-        return (OSError("annexfs could not remove symbolic link"))
+    except (KeyboardInterrupt, Exception) as e:
+        # Verify Enclosing Directory Exists
+        if (os.path.exists(enc_path)):
+            # Delete Enclosing Directory
+            shutil.rmtree(enc_path)
+
+        # Determine Error Handling
+        if (isinstance(e, KeyboardInterrupt)):
+            # Raise Interrupt
+            raise e
+        else:
+            # Return Exception
+            return (OSError("annexfs could not remove symbolic link"))
 
     # Get Path To Enclosing Directory
     enc_path = os.path.dirname(src_path)
@@ -293,12 +328,17 @@ def transfer_to(dst_path):
         try:
             # Copy Source File To Destination Directory
             shutil.copy2(src_file, dst_file, follow_symlinks = False)
-        except Exception:
+        except (KeyboardInterrupt, Exception) as e:
             # Recreate Symlink To File
             os.symlink(src_file, dst_file)
 
-            # Return Error
-            return (OSError("annexfs could not transfer file to destination"))
+            # Determine Error Handling
+            if (isinstance(e, KeyboardInterrupt)):
+                # Raise Interrupt
+                raise e
+            else:
+                # Return Exception
+                return (OSError("annexfs could not transfer file to destination"))
         else:
             # Set Enclosing Directory Permissions
             os.chmod(enc_path, 0o755)
@@ -314,12 +354,17 @@ def transfer_to(dst_path):
         try:
             # Copy Files From Source To Destination
             shutil.copytree(src_dir, dst_path, dirs_exist_ok = True)
-        except Exception:
+        except (KeyboardInterrupt, Exception) as e:
             # Recreate Symlink To File
             os.symlink(src_dir, dst_dir)
 
-            # Return Error
-            return (OSError("annexfs could not transfer directory to destination"))
+            # Determine Error Handling
+            if (isinstance(e, KeyboardInterrupt)):
+                # Raise Interrupt
+                raise e
+            else:
+                # Return Exception
+                return (OSError("annexfs could not transfer directory to destination"))
         else:
             # Set Enclosing Directory Permissions
             os.chmod(enc_path, 0o755)
