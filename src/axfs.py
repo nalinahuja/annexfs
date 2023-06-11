@@ -13,7 +13,7 @@ from util import hash
 ANNEXFS_ROOT = None
 
 # Configure AnnexFS Root Path
-with open("./config.yml", "r") as file:
+with open(os.path.join(os.path.dirname(__file__), "config.yml"), "r") as file:
     # Load YAML Configuration File
     config = yaml.safe_load(file)
 
