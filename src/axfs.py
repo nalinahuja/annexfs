@@ -1,7 +1,7 @@
 # Developed By Nalin Ahuja, nalinahuja
 
 import os
-import json
+import yaml
 import shutil
 
 from util import cli
@@ -9,13 +9,21 @@ from util import hash
 
 # End Imports------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+# Define AnnexFS Root Path
+ANNEXFS_ROOT = None
+
 # Configure AnnexFS Root Path
-with open("./config.json") as file:
-    # Load JSON Configuration File
-    config = json.load(file)
+with open("./config.yml", "r") as file:
+    # Load YAML Configuration File
+    config = yaml.safe_load(file)
 
     # Set AnnexFS Root Path
     ANNEXFS_ROOT = config["ANNEXFS_ROOT"]
+
+# Verify AnnexFS Root Path Is Set
+if (ANNEXFS_ROOT is None):
+    # Raise Error
+    raise (ValueError("annexfs root is None"))
 
 # End Constants----------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -91,15 +99,15 @@ def delete(link_path):
         return (FileNotFoundError(f"link path {cli.U}{link_path}{cli.N} does not exist"))
 
     # Verify Destination Path Is An Internal Symbolic Link
-    elif (not(os.path.islink(link_path)) and not(os.path.realpath(link_path).startswith(ANNEXFS_ROOT))):
+    elif (not(os.path.islink(link_path)) or not(os.path.realpath(link_path).startswith(ANNEXFS_ROOT))):
         # Return Error
         return (ValueError(f"destination path {cli.U}{link_path}{cli.N} is not an internal symbolic link"))
 
-    # Get Path To Annex Directory
-    anx_path = os.path.realpath(link_path)
+    # Get Path To Destination Directory
+    dst_path = os.path.realpath(link_path)
 
     # Get Path To Enclosing Directory
-    enc_path = os.path.dirname(anx_path)
+    enc_path = os.path.dirname(dst_path)
 
     # Verify Path To Enclosing Directory Exists
     if (not(os.path.exists(enc_path))):
@@ -122,7 +130,7 @@ def delete(link_path):
             os.chmod(enc_path, 0o555)
 
             # Recreate Symbolic Link
-            os.symlink(anx_path, link_path)
+            os.symlink(dst_path, link_path)
 
         # Return Error
         return (OSError("annexfs could not delete existing entry"))
@@ -203,6 +211,8 @@ def transfer_from(src_path):
             # Return Error
             return (OSError("annexfs could not transfer file to new entry"))
         else:
+            # TODO: Verify Source And Destination Sizes Are Equal
+
             # Remove Original Source File
             os.remove(src_file)
 
@@ -224,6 +234,8 @@ def transfer_from(src_path):
             # Return Error
             return (OSError("annexfs could not transfer directory to new entry"))
         else:
+            # TODO: Verify Source And Destination Sizes Are Equal
+
             # Remove Original Source Directory
             shutil.rmtree(src_dir)
 
@@ -244,7 +256,7 @@ def transfer_to(dst_path):
         return (FileNotFoundError(f"destination path {cli.U}{dst_path}{cli.N} does not exist"))
 
     # Verify Destination Path Is An Internal Symbolic Link
-    elif (not(os.path.islink(dst_path)) and not(os.path.realpath(dst_path).startswith(ANNEXFS_ROOT))):
+    elif (not(os.path.islink(dst_path)) or not(os.path.realpath(dst_path).startswith(ANNEXFS_ROOT))):
         # Return Error
         return (ValueError(f"destination path {cli.U}{dst_path}{cli.N} is not an internal symbolic link"))
 

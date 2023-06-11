@@ -2,4 +2,4 @@
 
 # Developed by Nalin Ahuja, nalinahuja
 
-command python3 ./src/main.py ${@}
+command python3 ./src/main.py "${@}"

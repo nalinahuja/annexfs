@@ -1,7 +1,7 @@
 # Developed By Nalin Ahuja, nalinahuja
 
-import afs
 import sys
+import axfs
 import traceback
 
 from util import cli
@@ -18,8 +18,8 @@ if (__name__ == "__main__"):
     action_arguments.add_argument("--delete", help = "delete annexfs entry", type = str)
 
     # Add Transfer Arguments
-    action_arguments.add_argument("--transfer-to", help = "restore files and delete annexfs entry", type = str)
     action_arguments.add_argument("--transfer-from", help = "create annexfs entry and save files", type = str)
+    action_arguments.add_argument("--transfer-to", help = "restore files and delete annexfs entry", type = str)
 
     # Parse Arguments
     args = parser.parse_args()
@@ -28,20 +28,21 @@ if (__name__ == "__main__"):
     err = None
 
     try:
-        # Process Mutually Exclusive Arguments
+        # Process Linkage Arguments
         if (args.create):
             # Create AnnexFS Entry
-            err = afs.create(args.create)
+            err = axfs.create(args.create)
         elif (args.delete):
             # Delete AnnexFS Entry
-            err = afs.delete(args.delete)
+            err = axfs.delete(args.delete)
 
+        # Process Transfer Arguments
+        if (args.transfer_from):
+            # Save Files To AnnexFS
+            err = axfs.transfer_from(args.transfer_from)
         if (args.transfer_to):
             # Restore Files From AnnexFS
-            err = afs.transfer_to(args.transfer_to)
-        elif (args.transfer_from):
-            # Save Files To AnnexFS
-            err = afs.transfer_from(args.transfer_from)
+            err = axfs.transfer_to(args.transfer_to)
     except KeyboardInterrupt:
         # Print Interrupt Status
         cli.write(cli.nl(2) + f"annexfs: Program interrupted by user", file = sys.stderr)
@@ -65,3 +66,5 @@ if (__name__ == "__main__"):
 
         # Print Error Information
         cli.write(f"{cli.DA} {type(err).__name__} - {err}", file = sys.stderr)
+
+# End Main Function-------------------------------------------------------------------------------------------------------------------------------------------------------
