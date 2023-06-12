@@ -445,12 +445,6 @@ def transfer_to(dst_path):
                 # Return Error
                 return (OSError("annexfs file transfer was unsuccessful"))
 
-            # Enable Enclosing Directory Writes
-            enable_write_perms(enc_path)
-
-            # Remove Source File
-            os.remove(src_file)
-
     else:
         # Form Paths To Source And Destination Directories
         src_dir = src_path
@@ -493,11 +487,8 @@ def transfer_to(dst_path):
                 # Return Error
                 return (OSError("annexfs directory transfer was unsuccessful"))
 
-            # Enable Enclosing Directory Writes
-            enable_write_perms(enc_path)
-
-            # Remove Source Directory
-            shutil.rmtree(src_dir)
+    # Enable Enclosing Directory Writes
+    enable_write_perms(enc_path)
 
     # Remove Enclosing Directory
     shutil.rmtree(enc_path)
