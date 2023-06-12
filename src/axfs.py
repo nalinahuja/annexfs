@@ -14,6 +14,45 @@ __ANNEXFS_ROOT = conf.mdata["ANNEXFS_ROOT"]
 
 # End Constants----------------------------------------------------------------------------------------------------------------------------------------------------------
 
+def enable_writes(path):
+    # Set File Write Permission Bits
+    os.chmod(path, 0o755)
+
+def disable_writes(path):
+    # Set File Write Permission Bits
+    os.chmod(path, 0o555)
+
+def get_file_size(path):
+    # Get File Statistics
+    file_stat = os.stat(path)
+
+    # Return File Size
+    return (file_stat.st_size)
+
+def get_dir_size(path):
+    # Initialize Directory Size
+    dir_size = 0
+
+    # Recurse Through Directory Tree
+    with os.scandir(path) as it:
+        # Iterate Over Tree Level
+        for entry in (it):
+            # Process Entry As File
+            if (entry.is_file()):
+                # Get File Statistics
+                file_stat = entry.stat()
+
+                # Update Directory Size
+                dir_size += file_stat.st_size
+
+            # Process Entry As Directory
+            elif (entry.is_dir()):
+                # Update Directory Size
+                dir_size += get_dir_size(entry.path)
+
+    # Return Directory Size
+    return (dir_size)
+
 def preprocess_path(path):
     # Expand Path Symbols
     path = os.path.expanduser(path)
@@ -24,7 +63,7 @@ def preprocess_path(path):
     # Return Preprocessed Path
     return (path)
 
-def get_path_components(path):
+def componentize_path(path):
     # Declare Path Components
     path_bname = path_fname = None
 
@@ -41,27 +80,6 @@ def get_path_components(path):
 
     # Return Path Components
     return (path, path_bname, path_fname)
-
-def get_file_size(path):
-    # Get File Size
-    if (os.path.isfile(path)):
-        # Get File Statistics
-        file_stat = os.stat(file_path)
-
-        # Return File Size
-        return (file_stat.st_size)
-
-    # Get Directory Size
-    elif (os.path.isdir(path)):
-        ...
-
-def enable_file_writes(path):
-    # Set File Write Permission Bits
-    os.chmod(path, 0o755)
-
-def disable_file_writes(path):
-    # Set File Write Permission Bits
-    os.chmod(path, 0o555)
 
 # End Helper Functions---------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -115,12 +133,12 @@ def create(ent_path):
         os.makedirs(dst_path)
 
         # Disable Enclosing Directory Writes
-        disable_file_writes(enc_path)
+        disable_writes(enc_path)
     except (KeyboardInterrupt, Exception) as e:
         # Verify Enclosing Directory Exists
         if (os.path.exists(enc_path)):
             # Enable Enclosing Directory Writes
-            enable_file_writes(enc_path)
+            enable_writes(enc_path)
 
             # Delete Enclosing Directory
             shutil.rmtree(enc_path)
@@ -176,7 +194,7 @@ def delete(link_path):
 
     try:
         # Enable Enclosing Directory Writes
-        enable_file_writes(enc_path)
+        enable_writes(enc_path)
 
         # Remove Enclosing Directory
         shutil.rmtree(enc_path)
@@ -187,7 +205,7 @@ def delete(link_path):
             os.symlink(dst_path, link_path)
 
             # Disable Enclosing Directory Writes
-            disable_file_writes(enc_path)
+            disable_writes(enc_path)
 
         # Determine Error Handling
         if (isinstance(e, KeyboardInterrupt)):
@@ -226,7 +244,7 @@ def transfer_from(src_path):
         return (FileExistsError(f"annexfs has stored {cli.U}{src_path}{cli.N}"))
 
     # Get Source Path Components
-    src_path, src_bname, src_fname = get_path_components(src_path)
+    src_path, src_bname, src_fname = componentize_path(src_path)
 
     # Form Path To Destination Directory
     dst_path = os.path.join(enc_path, src_bname)
@@ -236,12 +254,12 @@ def transfer_from(src_path):
         os.makedirs(dst_path)
 
         # Disable Enclosing Directory Writes
-        disable_file_writes(enc_path)
+        disable_writes(enc_path)
     except (KeyboardInterrupt, Exception) as e:
         # Verify Enclosing Directory Exists
         if (os.path.exists(enc_path)):
             # Enable Enclosing Directory Writes
-            enable_file_writes(enc_path)
+            enable_writes(enc_path)
 
             # Delete Enclosing Directory
             shutil.rmtree(enc_path)
@@ -262,10 +280,10 @@ def transfer_from(src_path):
 
         try:
             # Copy Source File To Destination Directory
-            shutil.copy2(src_file, dst_path, follow_symlinks = False)
+            shutil.copy2(src_file, dst_file, follow_symlinks = False)
         except (KeyboardInterrupt, Exception) as e:
             # Enable Enclosing Directory Writes
-            enable_file_writes(enc_path)
+            enable_writes(enc_path)
 
             # Delete Enclosing Directory
             shutil.rmtree(enc_path)
@@ -285,7 +303,7 @@ def transfer_from(src_path):
             # Verify Source And Destination File Sizes Are Equal
             if (src_file_size != dst_file_size):
                 # Enable Enclosing Directory Writes
-                enable_file_writes(enc_path)
+                enable_writes(enc_path)
 
                 # Delete Enclosing Directory
                 shutil.rmtree(enc_path)
@@ -306,10 +324,10 @@ def transfer_from(src_path):
 
         try:
             # Copy Files From Source To Destination
-            shutil.copytree(src_dir, dst_path, dirs_exist_ok = True)
+            shutil.copytree(src_dir, dst_dir, dirs_exist_ok = True)
         except (KeyboardInterrupt, Exception) as e:
             # Enable Enclosing Directory Writes
-            enable_file_writes(enc_path)
+            enable_writes(enc_path)
 
             # Delete Enclosing Directory
             shutil.rmtree(enc_path)
@@ -323,13 +341,13 @@ def transfer_from(src_path):
                 return (OSError("annexfs directory transfer was terminated due to error"))
         else:
             # Get Source And Destination Directory Sizes
-            src_dir_size = get_file_size(src_dir)
-            dst_dir_size = get_file_size(dst_dir)
+            src_dir_size = get_dir_size(src_dir)
+            dst_dir_size = get_dir_size(dst_dir)
 
             # Verify Source And Destination File Sizes Are Equal
             if (src_dir_size != dst_dir_size):
                 # Enable Enclosing Directory Writes
-                enable_file_writes(enc_path)
+                enable_writes(enc_path)
 
                 # Delete Enclosing Directory
                 shutil.rmtree(enc_path)
@@ -370,7 +388,7 @@ def transfer_to(dst_path):
         return (FileNotFoundError(f"annexfs has not stored {cli.U}{dst_path}{cli.N}"))
 
     # Get Source Path Components
-    src_path, src_bname, src_fname = get_path_components(src_path)
+    src_path, src_bname, src_fname = componentize_path(src_path)
 
     # Get Path To Enclosing Directory
     enc_path = os.path.dirname(src_path)
@@ -428,7 +446,7 @@ def transfer_to(dst_path):
                 return (OSError("annexfs file transfer was unsuccessful"))
 
             # Enable Enclosing Directory Writes
-            enable_file_writes(enc_path)
+            enable_writes(enc_path)
 
             # Remove Source File
             os.remove(src_file)
@@ -459,8 +477,8 @@ def transfer_to(dst_path):
                 return (OSError("annexfs directory transfer was terminated due to error"))
         else:
             # Get Source And Destination Directory Sizes
-            src_dir_size = get_file_size(src_dir)
-            dst_dir_size = get_file_size(dst_dir)
+            src_dir_size = get_dir_size(src_dir)
+            dst_dir_size = get_dir_size(dst_dir)
 
             # Verify Source And Destination File Sizes Are Equal
             if (src_dir_size != dst_dir_size):
@@ -476,7 +494,7 @@ def transfer_to(dst_path):
                 return (OSError("annexfs directory transfer was unsuccessful"))
 
             # Enable Enclosing Directory Writes
-            enable_file_writes(enc_path)
+            enable_writes(enc_path)
 
             # Remove Source Directory
             shutil.rmtree(src_dir)
