@@ -14,11 +14,11 @@ __ANNEXFS_ROOT = conf.mdata["ANNEXFS_ROOT"]
 
 # End Constants----------------------------------------------------------------------------------------------------------------------------------------------------------
 
-def enable_writes(path):
+def enable_write_perms(path):
     # Set File Write Permission Bits
     os.chmod(path, 0o755)
 
-def disable_writes(path):
+def disable_write_perms(path):
     # Set File Write Permission Bits
     os.chmod(path, 0o555)
 
@@ -133,12 +133,12 @@ def create(ent_path):
         os.makedirs(dst_path)
 
         # Disable Enclosing Directory Writes
-        disable_writes(enc_path)
+        disable_write_perms(enc_path)
     except (KeyboardInterrupt, Exception) as e:
         # Verify Enclosing Directory Exists
         if (os.path.exists(enc_path)):
             # Enable Enclosing Directory Writes
-            enable_writes(enc_path)
+            enable_write_perms(enc_path)
 
             # Delete Enclosing Directory
             shutil.rmtree(enc_path)
@@ -194,7 +194,7 @@ def delete(link_path):
 
     try:
         # Enable Enclosing Directory Writes
-        enable_writes(enc_path)
+        enable_write_perms(enc_path)
 
         # Remove Enclosing Directory
         shutil.rmtree(enc_path)
@@ -205,7 +205,7 @@ def delete(link_path):
             os.symlink(dst_path, link_path)
 
             # Disable Enclosing Directory Writes
-            disable_writes(enc_path)
+            disable_write_perms(enc_path)
 
         # Determine Error Handling
         if (isinstance(e, KeyboardInterrupt)):
@@ -254,12 +254,12 @@ def transfer_from(src_path):
         os.makedirs(dst_path)
 
         # Disable Enclosing Directory Writes
-        disable_writes(enc_path)
+        disable_write_perms(enc_path)
     except (KeyboardInterrupt, Exception) as e:
         # Verify Enclosing Directory Exists
         if (os.path.exists(enc_path)):
             # Enable Enclosing Directory Writes
-            enable_writes(enc_path)
+            enable_write_perms(enc_path)
 
             # Delete Enclosing Directory
             shutil.rmtree(enc_path)
@@ -283,7 +283,7 @@ def transfer_from(src_path):
             shutil.copy2(src_file, dst_file, follow_symlinks = False)
         except (KeyboardInterrupt, Exception) as e:
             # Enable Enclosing Directory Writes
-            enable_writes(enc_path)
+            enable_write_perms(enc_path)
 
             # Delete Enclosing Directory
             shutil.rmtree(enc_path)
@@ -303,7 +303,7 @@ def transfer_from(src_path):
             # Verify Source And Destination File Sizes Are Equal
             if (src_file_size != dst_file_size):
                 # Enable Enclosing Directory Writes
-                enable_writes(enc_path)
+                enable_write_perms(enc_path)
 
                 # Delete Enclosing Directory
                 shutil.rmtree(enc_path)
@@ -327,7 +327,7 @@ def transfer_from(src_path):
             shutil.copytree(src_dir, dst_dir, dirs_exist_ok = True)
         except (KeyboardInterrupt, Exception) as e:
             # Enable Enclosing Directory Writes
-            enable_writes(enc_path)
+            enable_write_perms(enc_path)
 
             # Delete Enclosing Directory
             shutil.rmtree(enc_path)
@@ -347,7 +347,7 @@ def transfer_from(src_path):
             # Verify Source And Destination File Sizes Are Equal
             if (src_dir_size != dst_dir_size):
                 # Enable Enclosing Directory Writes
-                enable_writes(enc_path)
+                enable_write_perms(enc_path)
 
                 # Delete Enclosing Directory
                 shutil.rmtree(enc_path)
@@ -446,7 +446,7 @@ def transfer_to(dst_path):
                 return (OSError("annexfs file transfer was unsuccessful"))
 
             # Enable Enclosing Directory Writes
-            enable_writes(enc_path)
+            enable_write_perms(enc_path)
 
             # Remove Source File
             os.remove(src_file)
@@ -494,7 +494,7 @@ def transfer_to(dst_path):
                 return (OSError("annexfs directory transfer was unsuccessful"))
 
             # Enable Enclosing Directory Writes
-            enable_writes(enc_path)
+            enable_write_perms(enc_path)
 
             # Remove Source Directory
             shutil.rmtree(src_dir)
