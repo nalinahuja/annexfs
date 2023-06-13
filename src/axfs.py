@@ -6,7 +6,7 @@ import shutil
 import signal
 
 from util import cli
-from util import hash
+from util.hash import md5
 from util.intr import InterruptProtector
 
 # End Imports------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -137,7 +137,7 @@ def create(link_path):
         return (FileNotFoundError(f"link directory {cli.U}{link_dir}{cli.N} is invalid"))
 
     # Form Path To Enclosing Directory
-    enc_path = os.path.join(__ANNEXFS_ROOT, hash.md5(link_path))
+    enc_path = os.path.join(__ANNEXFS_ROOT, md5(link_path))
 
     # Verify Enclosing Directory Path Does Not Exist
     if (os.path.exists(enc_path)):
@@ -254,7 +254,7 @@ def transfer_from(src_path):
         return (ValueError(f"source path {cli.U}{src_path}{cli.N} is not an external symbolic link"))
 
     # Form Path To Enclosing Directory
-    enc_path = os.path.join(__ANNEXFS_ROOT, hash.md5(src_path))
+    enc_path = os.path.join(__ANNEXFS_ROOT, md5(src_path))
 
     # Verify Path To Enclosing Directory Does Not Exist
     if (os.path.exists(enc_path)):
