@@ -1,16 +1,18 @@
 # Developed By Nalin Ahuja, nalinahuja
 
 import os
-import conf
+import config
 import shutil
+import signal
 
 from util import cli
 from util import hash
+from util.intr import InterruptProtector
 
 # End Imports------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 # AnnexFS Root Path
-__ANNEXFS_ROOT = conf.mdata["ANNEXFS_ROOT"]
+__ANNEXFS_ROOT = config.mdata["ANNEXFS_ROOT"]
 
 # End Constants----------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -81,9 +83,21 @@ def disable_write_perms(path):
     # Set File Write Permission Bits
     os.chmod(path, 0o555)
 
+def rm_onerror(func, path, info):
+    # Check For Write Permissions
+    if (not(os.access(path, os.W_OK))):
+        # Enable Write Permissions
+        enable_write_perms(path)
+
+        # Execute Callback Function
+        func(path)
+    else:
+        # Raise Non-Access Error
+        raise
+
 # End Helper Functions---------------------------------------------------------------------------------------------------------------------------------------------------
 
-def sanity_checks(fn):
+def sanity_checks(func):
     # Verify AnnexFS Root Path Is Set
     if (__ANNEXFS_ROOT is None):
         # Raise Error
@@ -99,32 +113,10 @@ def sanity_checks(fn):
         # Raise Error
         raise NotADirectoryError(f"annexfs root {cli.U}{__ANNEXFS_ROOT}{cli.N} is not a directory")
 
-    # Return Argument Function
-    return (fn)
+    # Return Callback Function
+    return (func)
 
 # End Decorator Functions------------------------------------------------------------------------------------------------------------------------------------------------
-
-def onerror(func, path, exc_info):
-    """
-    Error handler for ``shutil.rmtree``.
-
-    If the error is due to an access error (read only file)
-    it attempts to add write permission and then retries.
-
-    If the error is for another reason it re-raises the error.
-
-    Usage : ``shutil.rmtree(path, onerror=onerror)``
-    """
-    import stat
-    # Is the error an access error?
-    if not os.access(path, os.W_OK):
-        os.chmod(path, stat.S_IWUSR)
-        func(path)
-    else:
-        raise
-
-
-# End Callback Functions---------------------------------------------------------------------------------
 
 @sanity_checks
 def create(link_path):
@@ -135,6 +127,14 @@ def create(link_path):
     if (os.path.exists(link_path)):
         # Return Error
         return (FileExistsError(f"link path {cli.U}{link_path}{cli.N} exists"))
+
+    # Get Symbolic Link Directory
+    link_dir = os.path.dirname(link_path)
+
+    # Verify Symbolic Link Directory Exists
+    if (not(os.path.exists(link_dir))):
+        # Return Error
+        return (FileNotFoundError(f"link directory {cli.U}{link_dir}{cli.N} is invalid"))
 
     # Form Path To Enclosing Directory
     enc_path = os.path.join(__ANNEXFS_ROOT, hash.md5(link_path))
@@ -154,13 +154,15 @@ def create(link_path):
         # Disable Enclosing Directory Writes
         disable_write_perms(enc_path)
     except (KeyboardInterrupt, Exception) as e:
-        # Verify Enclosing Directory Exists
-        if (os.path.exists(enc_path)):
-            # Enable Enclosing Directory Writes
-            enable_write_perms(enc_path)
+        # Protect Cleanup From SIGINT
+        with InterruptProtector(signal.SIGINT):
+            # Verify Enclosing Directory Exists
+            if (os.path.exists(enc_path)):
+                # Enable Enclosing Directory Writes
+                enable_write_perms(enc_path)
 
-            # Delete Enclosing Directory
-            shutil.rmtree(enc_path)
+                # Delete Enclosing Directory
+                shutil.rmtree(enc_path)
 
         # Determine Error Handling
         if (isinstance(e, KeyboardInterrupt)):
@@ -170,8 +172,10 @@ def create(link_path):
             # Return Exception
             return (OSError("annexfs could not create new entry"))
 
-    # Create Symbolic Link To Directory
-    os.symlink(dst_path, link_path)
+    # Protect Symlink Creation From SIGINT
+    with InterruptProtector(signal.SIGINT):
+        # Create Symbolic Link To Directory
+        os.symlink(dst_path, link_path)
 
     # Return Success
     return (None)
@@ -203,31 +207,18 @@ def delete(link_path):
         return (FileNotFoundError(f"annexfs has not stored {cli.U}{link_path}{cli.N}"))
 
     try:
-        # Remove Symbolic Link
-        os.remove(link_path)
-    except (KeyboardInterrupt, Exception) as e:
-        # Determine Error Handling
-        if (isinstance(e, KeyboardInterrupt)):
-            # Raise Interrupt
-            raise e
-        elif (os.path.exists(link_path)):
-            # Return Exception
-            return (OSError("annexfs could not remove symbolic link"))
-
-    try:
         # Enable Enclosing Directory Writes
         enable_write_perms(enc_path)
 
         # Remove Enclosing Directory
         shutil.rmtree(enc_path)
     except (KeyboardInterrupt, Exception) as e:
-        # Check If Destination Directory Exists
-        if (os.path.exists(dst_path)):
-            # Recreate Symbolic Link
-            os.symlink(dst_path, link_path)
-
-            # Disable Enclosing Directory Writes
-            disable_write_perms(enc_path)
+        # Protect Cleanup From SIGINT
+        with InterruptProtector(signal.SIGINT):
+            # Check If Destination Directory Exists
+            if (os.path.exists(dst_path)):
+                # Disable Enclosing Directory Writes
+                disable_write_perms(enc_path)
 
         # Determine Error Handling
         if (isinstance(e, KeyboardInterrupt)):
@@ -236,6 +227,11 @@ def delete(link_path):
         elif (os.path.exists(dst_path)):
             # Return Exception
             return (OSError("annexfs could not delete existing entry"))
+
+    # Protect Symlink Deletion From SIGINT
+    with InterruptProtector(signal.SIGINT):
+        # Remove Symbolic Link
+        os.remove(link_path)
 
     # Return Success
     return (None)
@@ -278,13 +274,15 @@ def transfer_from(src_path):
         # Disable Enclosing Directory Writes
         disable_write_perms(enc_path)
     except (KeyboardInterrupt, Exception) as e:
-        # Verify Enclosing Directory Exists
-        if (os.path.exists(enc_path)):
-            # Enable Enclosing Directory Writes
-            enable_write_perms(enc_path)
+        # Protect Cleanup From SIGINT
+        with InterruptProtector(signal.SIGINT):
+            # Verify Enclosing Directory Exists
+            if (os.path.exists(enc_path)):
+                # Enable Enclosing Directory Writes
+                enable_write_perms(enc_path)
 
-            # Delete Enclosing Directory
-            shutil.rmtree(enc_path)
+                # Delete Enclosing Directory
+                shutil.rmtree(enc_path)
 
         # Determine Error Handling
         if (isinstance(e, KeyboardInterrupt)):
@@ -304,12 +302,13 @@ def transfer_from(src_path):
             # Copy Source File To Destination Directory
             shutil.copy2(src_file, dst_file, follow_symlinks = False)
         except (KeyboardInterrupt, Exception) as e:
-            # Enable Enclosing Directory Writes
-            enable_write_perms(enc_path)
+            # Protect Cleanup From SIGINT
+            with InterruptProtector(signal.SIGINT):
+                # Enable Enclosing Directory Writes
+                enable_write_perms(enc_path)
 
-            # Delete Enclosing Directory
-            # TODO: Permission Error Possible Here
-            shutil.rmtree(enc_path)
+                # Delete Enclosing Directory
+                shutil.rmtree(enc_path, onerror = rm_onerror)
 
             # Determine Error Handling
             if (isinstance(e, KeyboardInterrupt)):
@@ -318,7 +317,9 @@ def transfer_from(src_path):
             else:
                 # Return Exception
                 return (OSError("annexfs file transfer was terminated due to error"))
-        else:
+
+        # Protect Post Copy Instructions From SIGINT
+        with InterruptProtector(signal.SIGINT):
             # Get Source And Destination File Sizes
             src_file_size = get_file_size(src_file)
             dst_file_size = get_file_size(dst_file)
@@ -329,8 +330,7 @@ def transfer_from(src_path):
                 enable_write_perms(enc_path)
 
                 # Delete Enclosing Directory
-                # TODO: Permission Error Possible Here
-                shutil.rmtree(enc_path)
+                shutil.rmtree(enc_path, onerror = rm_onerror)
 
                 # Return Error
                 return (OSError("annexfs file transfer was unsuccessful"))
@@ -351,12 +351,13 @@ def transfer_from(src_path):
             # Copy Files From Source To Destination
             shutil.copytree(src_dir, dst_dir, dirs_exist_ok = True)
         except (KeyboardInterrupt, Exception) as e:
-            # Enable Enclosing Directory Writes
-            enable_write_perms(enc_path)
+            # Protect Cleanup From SIGINT
+            with InterruptProtector(signal.SIGINT):
+                # Enable Enclosing Directory Writes
+                enable_write_perms(enc_path)
 
-            # Delete Enclosing Directory
-            # TODO: Permission Error Possible Here
-            shutil.rmtree(enc_path)
+                # Delete Enclosing Directory
+                shutil.rmtree(enc_path, onerror = rm_onerror)
 
             # Determine Error Handling
             if (isinstance(e, KeyboardInterrupt)):
@@ -365,7 +366,9 @@ def transfer_from(src_path):
             else:
                 # Return Exception
                 return (OSError("annexfs directory transfer was terminated due to error"))
-        else:
+
+        # Protect Post Copy Instructions From SIGINT
+        with InterruptProtector(signal.SIGINT):
             # Get Source And Destination Directory Sizes
             src_dir_size = get_dir_size(src_dir)
             dst_dir_size = get_dir_size(dst_dir)
@@ -376,8 +379,7 @@ def transfer_from(src_path):
                 enable_write_perms(enc_path)
 
                 # Delete Enclosing Directory
-                # TODO: Permission Error Possible Here
-                shutil.rmtree(enc_path)
+                shutil.rmtree(enc_path, onerror = rm_onerror)
 
                 # Return Error
                 return (OSError("annexfs directory transfer was unsuccessful"))
@@ -440,14 +442,16 @@ def transfer_to(dst_path):
             # Copy Source File To Destination
             shutil.copy2(src_file, dst_file, follow_symlinks = False)
         except (KeyboardInterrupt, Exception) as e:
-            # Check If Destination File Exists
-            if (os.path.exists(dst_file)):
-                # Remove Destination File
-                # TODO: Permission Error Possible Here
-                os.remove(dst_file)
+            # Protect Cleanup From SIGINT
+            with InterruptProtector(signal.SIGINT):
+                # Check If Destination File Exists
+                if (os.path.exists(dst_file)):
+                    # Remove Destination File
+                    # TODO: Permission Error Possible Here
+                    os.remove(dst_file)
 
-            # Recreate Symlink To File
-            os.symlink(src_file, dst_file)
+                # Recreate Symlink To File
+                os.symlink(src_file, dst_file)
 
             # Determine Error Handling
             if (isinstance(e, KeyboardInterrupt)):
@@ -456,7 +460,9 @@ def transfer_to(dst_path):
             else:
                 # Return Exception
                 return (OSError("annexfs file transfer was terminated due to error"))
-        else:
+
+        # Protect Post Copy Instructions From SIGINT
+        with InterruptProtector(signal.SIGINT):
             # Get Source And Destination File Sizes
             src_file_size = get_file_size(src_file)
             dst_file_size = get_file_size(dst_file)
@@ -484,14 +490,16 @@ def transfer_to(dst_path):
             # Copy Source Directory To Destination
             shutil.copytree(src_dir, dst_dir, dirs_exist_ok = True)
         except (KeyboardInterrupt, Exception) as e:
-            # Check If Destination Directory Exists
-            if (os.path.exists(dst_dir)):
-                # Remove Destination Directory
-                # TODO: Permission Error Possible Here
-                shutil.rmtree(dst_dir)
+            # Protect Cleanup From SIGINT
+            with InterruptProtector(signal.SIGINT):
+                # Check If Destination Directory Exists
+                if (os.path.exists(dst_dir)):
+                    # Remove Destination Directory
+                    # TODO: Permission Error Possible Here
+                    shutil.rmtree(dst_dir)
 
-            # Recreate Symlink To File
-            os.symlink(src_dir, dst_dir)
+                # Recreate Symlink To File
+                os.symlink(src_dir, dst_dir)
 
             # Determine Error Handling
             if (isinstance(e, KeyboardInterrupt)):
@@ -500,7 +508,8 @@ def transfer_to(dst_path):
             else:
                 # Return Exception
                 return (OSError("annexfs directory transfer was terminated due to error"))
-        else:
+
+        with InterruptProtector(signal.SIGINT):
             # Get Source And Destination Directory Sizes
             src_dir_size = get_dir_size(src_dir)
             dst_dir_size = get_dir_size(dst_dir)

@@ -41,7 +41,7 @@ def Parser(*args, **kwargs):
 
 def hr():
     # Get Command Line Width
-    width, _ = size()
+    width, _ = os.get_terminal_size()
 
     # Write Horizontal Line
     write((HR) * width, file = sys.stdout)
