@@ -21,7 +21,7 @@ if (__name__ == "__main__"):
 
     # Add Transfer Arguments
     action_arguments.add_argument("--transfer-from", help = "transfer files from main to annexfs", type = str)
-    action_arguments.add_argument("--transfer-to", help = "transfer files from annexfs to main", type = str)
+    action_arguments.add_argument("--transfer-to", help = "transfer files to main from annexfs", type = str)
 
     # Parse Arguments
     args = parser.parse_args()
@@ -40,10 +40,10 @@ if (__name__ == "__main__"):
 
         # Process Transfer Arguments
         if (args.transfer_from):
-            # Save Files To AnnexFS
+            # Transfer Files To AnnexFS
             err = axfs.transfer_from(args.transfer_from)
         if (args.transfer_to):
-            # Restore Files From AnnexFS
+            # Transfer Files From AnnexFS
             err = axfs.transfer_to(args.transfer_to)
     except KeyboardInterrupt:
         # Print Interrupt Status

@@ -14,53 +14,14 @@ __ANNEXFS_ROOT = conf.mdata["ANNEXFS_ROOT"]
 
 # End Constants----------------------------------------------------------------------------------------------------------------------------------------------------------
 
-def enable_write_perms(path):
-    # Set File Write Permission Bits
-    os.chmod(path, 0o755)
-
-def disable_write_perms(path):
-    # Set File Write Permission Bits
-    os.chmod(path, 0o555)
-
-def get_file_size(path):
-    # Get File Statistics
-    file_stat = os.stat(path)
-
-    # Return File Size
-    return (file_stat.st_size)
-
-def get_dir_size(path):
-    # Initialize Directory Size
-    dir_size = 0
-
-    # Recurse Through Directory Tree
-    with os.scandir(path) as it:
-        # Iterate Over Tree Level
-        for entry in (it):
-            # Process Entry As File
-            if (entry.is_file()):
-                # Get File Statistics
-                file_stat = entry.stat()
-
-                # Update Directory Size
-                dir_size += file_stat.st_size
-
-            # Process Entry As Directory
-            elif (entry.is_dir()):
-                # Update Directory Size
-                dir_size += get_dir_size(entry.path)
-
-    # Return Directory Size
-    return (dir_size)
-
-def preprocess_path(path):
+def expand_path(path):
     # Expand Path Symbols
     path = os.path.expanduser(path)
 
     # Get Absolute Path
     path = os.path.abspath(path)
 
-    # Return Preprocessed Path
+    # Return Expanded Path
     return (path)
 
 def componentize_path(path):
@@ -80,6 +41,45 @@ def componentize_path(path):
 
     # Return Path Components
     return (path, path_bname, path_fname)
+
+def get_dir_size(path):
+    # Initialize Directory Size
+    dir_size = 0
+
+    # Recurse Through File Tree
+    with os.scandir(path) as ft:
+        # Iterate Over File Tree Entries
+        for entry in (ft):
+            # Process Entry As File
+            if (entry.is_file()):
+                # Get File Statistics
+                file_stat = entry.stat()
+
+                # Update Directory Size
+                dir_size += file_stat.st_size
+
+            # Process Entry As Directory
+            elif (entry.is_dir()):
+                # Update Directory Size
+                dir_size += get_dir_size(entry.path)
+
+    # Return Directory Size
+    return (dir_size)
+
+def get_file_size(path):
+    # Get File Statistics
+    file_stat = os.stat(path)
+
+    # Return File Size
+    return (file_stat.st_size)
+
+def enable_write_perms(path):
+    # Set File Write Permission Bits
+    os.chmod(path, 0o755)
+
+def disable_write_perms(path):
+    # Set File Write Permission Bits
+    os.chmod(path, 0o555)
 
 # End Helper Functions---------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -104,29 +104,48 @@ def sanity_checks(fn):
 
 # End Decorator Functions------------------------------------------------------------------------------------------------------------------------------------------------
 
-@sanity_checks
-def create(ent_path):
-    # Preprocess Entry Path
-    ent_path = preprocess_path(ent_path)
+def onerror(func, path, exc_info):
+    """
+    Error handler for ``shutil.rmtree``.
 
-    # Verify Entry Path Does Not Exist
-    if (os.path.exists(ent_path)):
+    If the error is due to an access error (read only file)
+    it attempts to add write permission and then retries.
+
+    If the error is for another reason it re-raises the error.
+
+    Usage : ``shutil.rmtree(path, onerror=onerror)``
+    """
+    import stat
+    # Is the error an access error?
+    if not os.access(path, os.W_OK):
+        os.chmod(path, stat.S_IWUSR)
+        func(path)
+    else:
+        raise
+
+
+# End Callback Functions---------------------------------------------------------------------------------
+
+@sanity_checks
+def create(link_path):
+    # Expand Symbolic Link Path
+    link_path = expand_path(link_path)
+
+    # Verify Symbolic Link Path Does Not Exist
+    if (os.path.exists(link_path)):
         # Return Error
-        return (FileExistsError(f"entry path {cli.U}{ent_path}{cli.N} exists"))
+        return (FileExistsError(f"link path {cli.U}{link_path}{cli.N} exists"))
 
     # Form Path To Enclosing Directory
-    enc_path = os.path.join(__ANNEXFS_ROOT, hash.md5(ent_path))
+    enc_path = os.path.join(__ANNEXFS_ROOT, hash.md5(link_path))
 
-    # Verify Path To Enclosing Directory Does Not Exist
+    # Verify Enclosing Directory Path Does Not Exist
     if (os.path.exists(enc_path)):
         # Return Error
-        return (FileExistsError(f"annexfs has stored {cli.U}{ent_path}{cli.N}"))
-
-    # Get Entry Path Basename Component
-    ent_bname = os.path.basename(ent_path)
+        return (FileExistsError(f"annexfs has stored {cli.U}{link_path}{cli.N}"))
 
     # Form Path To Destination Directory
-    dst_path = os.path.join(enc_path, ent_bname)
+    dst_path = os.path.join(enc_path, os.path.basename(link_path))
 
     try:
         # Create Destination Directory
@@ -152,28 +171,28 @@ def create(ent_path):
             return (OSError("annexfs could not create new entry"))
 
     # Create Symbolic Link To Directory
-    os.symlink(dst_path, ent_path)
+    os.symlink(dst_path, link_path)
 
     # Return Success
     return (None)
 
 @sanity_checks
 def delete(link_path):
-    # Preprocess Symbolic Link Path
-    link_path = preprocess_path(link_path)
+    # Expand Symbolic Link Path
+    link_path = expand_path(link_path)
 
     # Verify Symbolic Link Path Exists
     if (not(os.path.exists(link_path))):
         # Return Error
         return (FileNotFoundError(f"link path {cli.U}{link_path}{cli.N} does not exist"))
 
-    # Verify Destination Path Is An Internal Symbolic Link
-    elif (not(os.path.islink(link_path)) or not(os.path.realpath(link_path).startswith(__ANNEXFS_ROOT))):
-        # Return Error
-        return (ValueError(f"destination path {cli.U}{link_path}{cli.N} is not an internal symbolic link"))
-
     # Get Path To Destination Directory
     dst_path = os.path.realpath(link_path)
+
+    # Verify Destination Path Is An Internal Symbolic Link
+    if (not(os.path.islink(link_path)) or not(dst_path.startswith(__ANNEXFS_ROOT))):
+        # Return Error
+        return (ValueError(f"destination path {cli.U}{link_path}{cli.N} is not an internal symbolic link"))
 
     # Get Path To Enclosing Directory
     enc_path = os.path.dirname(dst_path)
@@ -187,9 +206,12 @@ def delete(link_path):
         # Remove Symbolic Link
         os.remove(link_path)
     except (KeyboardInterrupt, Exception) as e:
-        # Check If Symbolic Link Was Removed
-        if (os.path.exists(link_path)):
-            # Return Error
+        # Determine Error Handling
+        if (isinstance(e, KeyboardInterrupt)):
+            # Raise Interrupt
+            raise e
+        elif (os.path.exists(link_path)):
+            # Return Exception
             return (OSError("annexfs could not remove symbolic link"))
 
     try:
@@ -222,8 +244,8 @@ def delete(link_path):
 
 @sanity_checks
 def transfer_from(src_path):
-    # Preprocess Source Path
-    src_path = preprocess_path(src_path)
+    # Expand Source Path
+    src_path = expand_path(src_path)
 
     # Verify Source Path Exists
     if (not(os.path.exists(src_path))):
@@ -286,6 +308,7 @@ def transfer_from(src_path):
             enable_write_perms(enc_path)
 
             # Delete Enclosing Directory
+            # TODO: Permission Error Possible Here
             shutil.rmtree(enc_path)
 
             # Determine Error Handling
@@ -306,12 +329,14 @@ def transfer_from(src_path):
                 enable_write_perms(enc_path)
 
                 # Delete Enclosing Directory
+                # TODO: Permission Error Possible Here
                 shutil.rmtree(enc_path)
 
                 # Return Error
                 return (OSError("annexfs file transfer was unsuccessful"))
 
             # Remove Source File
+            # TODO: Permission Error Possible Here
             os.remove(src_file)
 
             # Create Symbolic Link To File
@@ -330,6 +355,7 @@ def transfer_from(src_path):
             enable_write_perms(enc_path)
 
             # Delete Enclosing Directory
+            # TODO: Permission Error Possible Here
             shutil.rmtree(enc_path)
 
             # Determine Error Handling
@@ -350,12 +376,14 @@ def transfer_from(src_path):
                 enable_write_perms(enc_path)
 
                 # Delete Enclosing Directory
+                # TODO: Permission Error Possible Here
                 shutil.rmtree(enc_path)
 
                 # Return Error
                 return (OSError("annexfs directory transfer was unsuccessful"))
 
             # Remove Source Directory
+            # TODO: Permission Error Possible Here
             shutil.rmtree(src_dir)
 
             # Create Symbolic Link To Directory
@@ -366,32 +394,32 @@ def transfer_from(src_path):
 
 @sanity_checks
 def transfer_to(dst_path):
-    # Preprocess Destination Path
-    dst_path = preprocess_path(dst_path)
+    # Expand Destination Path
+    dst_path = expand_path(dst_path)
 
     # Verify Destination Path Exists
     if (not(os.path.exists(dst_path))):
         # Return Error
         return (FileNotFoundError(f"destination path {cli.U}{dst_path}{cli.N} does not exist"))
 
-    # Verify Destination Path Is An Internal Symbolic Link
-    elif (not(os.path.islink(dst_path)) or not(os.path.realpath(dst_path).startswith(__ANNEXFS_ROOT))):
-        # Return Error
-        return (ValueError(f"destination path {cli.U}{dst_path}{cli.N} is not an internal symbolic link"))
-
     # Get Path To Source Directory
     src_path = os.path.realpath(dst_path)
 
-    # Verify Path To Source Directory Exists
-    if (not(os.path.exists(src_path))):
+    # Verify Destination Path Is An Internal Symbolic Link
+    if (not(os.path.islink(dst_path)) or not(src_path.startswith(__ANNEXFS_ROOT))):
         # Return Error
-        return (FileNotFoundError(f"annexfs has not stored {cli.U}{dst_path}{cli.N}"))
+        return (ValueError(f"destination path {cli.U}{dst_path}{cli.N} is not an internal symbolic link"))
 
     # Get Source Path Components
     src_path, src_bname, src_fname = componentize_path(src_path)
 
     # Get Path To Enclosing Directory
     enc_path = os.path.dirname(src_path)
+
+    # Verify Path To Enclosing Directory Exists
+    if (not(os.path.exists(enc_path))):
+        # Return Error
+        return (FileNotFoundError(f"annexfs has not stored {cli.U}{dst_path}{cli.N}"))
 
     try:
         # Remove Symbolic Link
@@ -415,6 +443,7 @@ def transfer_to(dst_path):
             # Check If Destination File Exists
             if (os.path.exists(dst_file)):
                 # Remove Destination File
+                # TODO: Permission Error Possible Here
                 os.remove(dst_file)
 
             # Recreate Symlink To File
@@ -437,6 +466,7 @@ def transfer_to(dst_path):
                 # Check If Destination File Exists
                 if (os.path.exists(dst_file)):
                     # Remove Destination File
+                    # TODO: Permission Error Possible Here
                     os.remove(dst_file)
 
                 # Recreate Symlink To File
@@ -457,6 +487,7 @@ def transfer_to(dst_path):
             # Check If Destination Directory Exists
             if (os.path.exists(dst_dir)):
                 # Remove Destination Directory
+                # TODO: Permission Error Possible Here
                 shutil.rmtree(dst_dir)
 
             # Recreate Symlink To File
@@ -479,6 +510,7 @@ def transfer_to(dst_path):
                 # Check If Destination Directory Exists
                 if (os.path.exists(dst_dir)):
                     # Remove Destination Directory
+                    # TODO: Permission Error Possible Here
                     shutil.rmtree(dst_dir)
 
                 # Recreate Symlink To File
@@ -491,6 +523,7 @@ def transfer_to(dst_path):
     enable_write_perms(enc_path)
 
     # Remove Enclosing Directory
+    # TODO: Permission Error Possible Here
     shutil.rmtree(enc_path)
 
     # Return Success
