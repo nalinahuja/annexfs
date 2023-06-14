@@ -26,6 +26,6 @@ with open(__ANNEXFS_CONFIG, "r") as file:
 # Verify Metadata Dictionary
 if (mdata is None):
     # Raise Error
-    raise ValueError(f"annexfs could not load metadata from configuration file {cli.U}{__ANNEXFS_CONFIG}{cli.N}")
+    raise ValueError(f"annexfs: could not load metadata from configuration file {cli.U}{__ANNEXFS_CONFIG}{cli.N}")
 
 # End Configuration Loader------------------------------------------------------------------------------------------------------------------------------------------------
