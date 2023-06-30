@@ -39,10 +39,10 @@ if (__name__ == "__main__"):
             err = axfs.delete(args.delete)
 
         # Process Transfer Arguments
-        if (args.transfer_from):
+        elif (args.transfer_from):
             # Transfer Files To AnnexFS
             err = axfs.transfer_from(args.transfer_from)
-        if (args.transfer_to):
+        elif (args.transfer_to):
             # Transfer Files From AnnexFS
             err = axfs.transfer_to(args.transfer_to)
     except KeyboardInterrupt:

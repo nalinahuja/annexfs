@@ -13,11 +13,11 @@ class SignalProtector:
         self.sigmask = None
 
     def __enter__(self):
-        # Ignore Signal
+        # Save Signal Mask
         self.sigmask = signal(self.sigtype, SIG_IGN)
 
     def __exit__(self, *args):
-        # Acknowledge Signal
+        # Restore Signal Mask
         signal(self.sigtype, self.sigmask)
 
 # End Signal Classes------------------------------------------------------------------------------------------------------------------------------------------------------
