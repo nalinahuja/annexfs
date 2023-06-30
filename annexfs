@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
-# Developed by Nalin Ahuja, nalinahuja
+# Get Project Root Directory
+readonly ROOT_DIR=$(command cd -- "$(command dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && command pwd)
 
-command python3 ./src/main.py "${@}"
+# Start AnnexFS Program
+command python3 ${ROOT_DIR}/src/main.py "${@}"
