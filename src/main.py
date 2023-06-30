@@ -1,7 +1,6 @@
 # Developed By Nalin Ahuja, nalinahuja
 
 import sys
-import axfs
 import traceback
 
 from util import cli
@@ -30,6 +29,9 @@ if (__name__ == "__main__"):
     err = None
 
     try:
+        # Import AnnexFS Module
+        import axfs
+
         # Process Linkage Arguments
         if (args.create):
             # Create AnnexFS Entry
