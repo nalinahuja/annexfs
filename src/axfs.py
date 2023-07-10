@@ -424,10 +424,15 @@ def transfer_to(dst_path):
         # Remove Symbolic Link
         os.remove(dst_path)
     except (KeyboardInterrupt, Exception) as e:
-        # Check If Symbolic Link Was Removed
-        if (os.path.exists(dst_path)):
-            # Return Error
-            return (OSError("annexfs could not remove symbolic link"))
+        # Determine Error Handling
+        if (isinstance(e, KeyboardInterrupt)):
+            # Raise Interrupt
+            raise e
+        else:
+            # Check If Symbolic Link Was Removed
+            if (os.path.exists(dst_path)):
+                # Return Error
+                return (OSError("annexfs could not remove symbolic link"))
 
     # Determine Transfer Type
     if (not(src_fname is None)):
