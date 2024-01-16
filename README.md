@@ -1,2 +1,2 @@
 # annexfs
-virtualy expand an internal hard disk
+Virtualy expand an internal hard disk.

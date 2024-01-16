@@ -4,9 +4,9 @@ import os
 import config
 import shutil
 
+from util import id
 from util import cli
 from util import sig
-from util import hash
 
 from util.sig import SignalProtector
 
@@ -135,13 +135,15 @@ def create(link_path):
         # Return Error
         return (FileNotFoundError(f"link directory {cli.U}{link_dir}{cli.N} does not exist"))
 
-    # Form Path To Enclosing Directory
-    enc_path = os.path.join(__ANNEXFS_ROOT, hash.md5(link_path))
+    # Form Enclosing Path Until Unique
+    while (True):
+        # Form Path To Enclosing Directory
+        enc_path = os.path.join(__ANNEXFS_ROOT, id.generate(link_path))
 
-    # Verify Enclosing Directory Path Does Not Exist
-    if (os.path.exists(enc_path)):
-        # Return Error
-        return (FileExistsError(f"annexfs has stored {cli.U}{link_path}{cli.N}"))
+        # Verify Enclosing Path Is Unique
+        if (not(os.path.exists(enc_path))):
+            # Break Loop
+            break
 
     # Form Path To Destination Directory
     dst_path = os.path.join(enc_path, os.path.basename(link_path))
@@ -253,12 +255,17 @@ def transfer_from(src_path):
         return (ValueError(f"source path {cli.U}{src_path}{cli.N} is not an external symbolic link"))
 
     # Form Path To Enclosing Directory
-    enc_path = os.path.join(__ANNEXFS_ROOT, hash.md5(src_path))
+    enc_path = os.path.join(__ANNEXFS_ROOT, id.generate(src_path))
 
-    # Verify Path To Enclosing Directory Does Not Exist
-    if (os.path.exists(enc_path)):
-        # Return Error
-        return (FileExistsError(f"annexfs has stored {cli.U}{src_path}{cli.N}"))
+    # Form Enclosing Path Until Unique
+    while (True):
+        # Form Path To Enclosing Directory
+        enc_path = os.path.join(__ANNEXFS_ROOT, id.generate(link_path))
+
+        # Verify Enclosing Path Is Unique
+        if (not(os.path.exists(enc_path))):
+            # Break Loop
+            break
 
     # Get Source Path Components
     src_path, src_bname, src_fname = componentize_path(src_path)
