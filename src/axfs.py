@@ -254,13 +254,10 @@ def transfer_from(src_path):
         # Return Error
         return (ValueError(f"source path {cli.U}{src_path}{cli.N} is not an external symbolic link"))
 
-    # Form Path To Enclosing Directory
-    enc_path = os.path.join(__ANNEXFS_ROOT, id.generate(src_path))
-
     # Form Enclosing Path Until Unique
     while (True):
         # Form Path To Enclosing Directory
-        enc_path = os.path.join(__ANNEXFS_ROOT, id.generate(link_path))
+        enc_path = os.path.join(__ANNEXFS_ROOT, id.generate(src_path))
 
         # Verify Enclosing Path Is Unique
         if (not(os.path.exists(enc_path))):
