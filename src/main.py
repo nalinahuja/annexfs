@@ -11,6 +11,9 @@ if (__name__ == "__main__"):
     # Initialize Argument Parser
     parser = cli.Parser(prog = "annexfs")
 
+    # Add Configuration File Argument
+    parser.add_argument("config", help = "path to configuration file", type = str)
+
     # Initialize Action Arguments Group
     action_arguments = parser.add_mutually_exclusive_group(required = True)
 
@@ -32,15 +35,18 @@ if (__name__ == "__main__"):
         # Import AnnexFS Module
         import axfs
 
-        # Process Linkage Arguments
+        # Load Configuration Into AnnexFS Module
+        if (not(axfs.load_config(args.config))):
+            # Raise Error
+            raise RuntimeError(f"failed to load configuration {cli.U}{args.config}{cli.N}")
+
+        # Complete Specified Action
         if (args.create):
             # Create AnnexFS Entry
             err = axfs.create(args.create)
         elif (args.delete):
             # Delete AnnexFS Entry
             err = axfs.delete(args.delete)
-
-        # Process Transfer Arguments
         elif (args.transfer_from):
             # Transfer Files To AnnexFS
             err = axfs.transfer_from(args.transfer_from)

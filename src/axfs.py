@@ -1,7 +1,7 @@
 # Developed By Nalin Ahuja, nalinahuja
 
 import os
-import config
+import yaml
 import shutil
 
 from util import id
@@ -12,26 +12,58 @@ from util.sig import SignalProtector
 
 # End Imports------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+# AnnexFS Root Key
+__ANNEXFS_ROOT_KEY = "ANNEXFS_ROOT"
+
 # AnnexFS Root Path
-__ANNEXFS_ROOT = config.mdata["ANNEXFS_ROOT"]
+__ANNEXFS_ROOT_PATH = None
 
 # End Constants----------------------------------------------------------------------------------------------------------------------------------------------------------
 
+def load_config(config):
+    # Set Global Variable Scope
+    global __ANNEXFS_ROOT_PATH
+
+    # Verify Configuration File Exists
+    if (not(os.path.exists(config))):
+        # Raise Error
+        raise FileNotFoundError(f"configuration file {cli.U}{config}{cli.N} does not exist")
+
+    # Load Data From AnnexFS Configuration File
+    with open(config, "r") as file:
+        # Load YAML Configuration File
+        data = yaml.safe_load(file)
+
+        # Verify Data Dictionary
+        if (not(isinstance(data, dict))):
+            # Raise Error
+            raise ValueError(f"configuration file {cli.U}{config}{cli.N} is malformed")
+
+        # Verify Data Dictionary Contains AnnexFS Root Key
+        if (not(__ANNEXFS_ROOT_KEY in data)):
+            # Raise Error
+            raise KeyError(f"configuration file {cli.U}{config}{cli.N} does not contain {__ANNEXFS_ROOT_KEY}")
+
+        # Set AnnexFS Root Path
+        __ANNEXFS_ROOT_PATH = data[__ANNEXFS_ROOT_KEY]
+
+# End Configuration Loader-----------------------------------------------------------------------------------------------------------------------------------------------
+
 def sanity_checks(func):
     # Verify AnnexFS Root Path Is Set
-    if (__ANNEXFS_ROOT is None):
+    if (__ANNEXFS_ROOT_PATH is None):
         # Raise Error
-        raise ValueError(f"annexfs root is {cli.U}{__ANNEXFS_ROOT}{cli.N}")
+        raise ValueError(f"annexfs root is {cli.U}{__ANNEXFS_ROOT_PATH}{cli.N}")
 
     # Verify AnnexFS Root Exists
-    elif (not(os.path.exists(__ANNEXFS_ROOT))):
+    elif (not(os.path.exists(__ANNEXFS_ROOT_PATH))):
         # Raise Error
-        raise FileNotFoundError(f"annexfs root {cli.U}{__ANNEXFS_ROOT}{cli.N} does not exist")
+        raise FileNotFoundError(f"annexfs root {cli.U}{__ANNEXFS_ROOT_PATH}{cli.N} does not exist")
 
     # Verify AnnexFS Root Is A Directory
-    elif (not(os.path.isdir(__ANNEXFS_ROOT))):
+    elif (not(os.path.isdir(__ANNEXFS_ROOT_PATH))):
         # Raise Error
-        raise NotADirectoryError(f"annexfs root {cli.U}{__ANNEXFS_ROOT}{cli.N} is not a directory")
+        raise NotADirectoryError(f"annexfs root {cli.U}{__ANNEXFS_ROOT_PATH}{cli.N} is not a directory")
 
     # Return Callback Function
     return (func)
@@ -117,7 +149,7 @@ def rm_onerror(func, path, info):
         # Raise Non-Access Error
         raise
 
-# End Helper Functions--------------------------------------------------------------------------------------------------------------------------------------------------
+# End Helper Functions---------------------------------------------------------------------------------------------------------------------------------------------------
 
 @sanity_checks
 def create(link_path):
@@ -140,7 +172,7 @@ def create(link_path):
     # Form Enclosing Path Until Unique
     while (True):
         # Form Path To Enclosing Directory
-        enc_path = os.path.join(__ANNEXFS_ROOT, id.generate(link_path))
+        enc_path = os.path.join(__ANNEXFS_ROOT_PATH, id.generate(link_path))
 
         # Verify Enclosing Path Is Unique
         if (not(os.path.exists(enc_path))):
@@ -197,7 +229,7 @@ def delete(link_path):
     dst_path = os.path.realpath(link_path)
 
     # Verify Destination Path Is An Internal Symbolic Link
-    if (not(os.path.islink(link_path) and dst_path.startswith(__ANNEXFS_ROOT))):
+    if (not(os.path.islink(link_path) and dst_path.startswith(__ANNEXFS_ROOT_PATH))):
         # Return Error
         return (ValueError(f"destination path {cli.U}{link_path}{cli.N} is not an internal symbolic link"))
 
@@ -259,7 +291,7 @@ def transfer_from(src_path):
     # Form Enclosing Path Until Unique
     while (True):
         # Form Path To Enclosing Directory
-        enc_path = os.path.join(__ANNEXFS_ROOT, id.generate(src_path))
+        enc_path = os.path.join(__ANNEXFS_ROOT_PATH, id.generate(src_path))
 
         # Verify Enclosing Path Is Unique
         if (not(os.path.exists(enc_path))):
@@ -411,7 +443,7 @@ def transfer_to(dst_path):
     src_path = os.path.realpath(dst_path)
 
     # Verify Destination Path Is An Internal Symbolic Link
-    if (not(os.path.islink(dst_path) and src_path.startswith(__ANNEXFS_ROOT))):
+    if (not(os.path.islink(dst_path) and src_path.startswith(__ANNEXFS_ROOT_PATH))):
         # Return Error
         return (ValueError(f"destination path {cli.U}{dst_path}{cli.N} is not an internal symbolic link"))
 
