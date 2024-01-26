@@ -1,7 +1,7 @@
 # Developed By Nalin Ahuja, nalinahuja
 
 import os
-import yaml
+import config
 import shutil
 
 from util import id
@@ -12,63 +12,45 @@ from util.sig import SignalProtector
 
 # End Imports------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-# AnnexFS Root Key
-__ANNEXFS_ROOT_KEY = "ANNEXFS_ROOT"
-
 # AnnexFS Root Path
-__ANNEXFS_ROOT_PATH = None
+__ANNEXFS_ROOT = config.data["ANNEXFS_ROOT"]
 
 # End Constants----------------------------------------------------------------------------------------------------------------------------------------------------------
 
-def load_config(config):
-    # Set Global Variable Scope
-    global __ANNEXFS_ROOT_PATH
-
-    # Verify Configuration File Exists
-    if (not(os.path.exists(config))):
-        # Raise Error
-        raise FileNotFoundError(f"configuration file {cli.U}{config}{cli.N} does not exist")
-
-    # Load Data From AnnexFS Configuration File
-    with open(config, "r") as file:
-        # Load YAML Configuration File
-        data = yaml.safe_load(file)
-
-        # Verify Data Dictionary
-        if (not(isinstance(data, dict))):
-            # Raise Error
-            raise ValueError(f"configuration file {cli.U}{config}{cli.N} is malformed")
-
-        # Verify Data Dictionary Contains AnnexFS Root Key
-        if (not(__ANNEXFS_ROOT_KEY in data)):
-            # Raise Error
-            raise KeyError(f"configuration file {cli.U}{config}{cli.N} does not contain {__ANNEXFS_ROOT_KEY}")
-
-        # Set AnnexFS Root Path
-        __ANNEXFS_ROOT_PATH = data[__ANNEXFS_ROOT_KEY]
-
-# End Configuration Loader-----------------------------------------------------------------------------------------------------------------------------------------------
-
 def sanity_checks(func):
     # Verify AnnexFS Root Path Is Set
-    if (__ANNEXFS_ROOT_PATH is None):
+    if (__ANNEXFS_ROOT is None):
         # Raise Error
-        raise ValueError(f"annexfs root is {cli.U}{__ANNEXFS_ROOT_PATH}{cli.N}")
+        raise ValueError(f"annexfs root is {cli.U}{__ANNEXFS_ROOT}{cli.N}")
 
     # Verify AnnexFS Root Exists
-    elif (not(os.path.exists(__ANNEXFS_ROOT_PATH))):
+    elif (not(os.path.exists(__ANNEXFS_ROOT))):
         # Raise Error
-        raise FileNotFoundError(f"annexfs root {cli.U}{__ANNEXFS_ROOT_PATH}{cli.N} does not exist")
+        raise FileNotFoundError(f"annexfs root {cli.U}{__ANNEXFS_ROOT}{cli.N} does not exist")
 
     # Verify AnnexFS Root Is A Directory
-    elif (not(os.path.isdir(__ANNEXFS_ROOT_PATH))):
+    elif (not(os.path.isdir(__ANNEXFS_ROOT))):
         # Raise Error
-        raise NotADirectoryError(f"annexfs root {cli.U}{__ANNEXFS_ROOT_PATH}{cli.N} is not a directory")
+        raise NotADirectoryError(f"annexfs root {cli.U}{__ANNEXFS_ROOT}{cli.N} is not a directory")
 
     # Return Callback Function
     return (func)
 
 # End Decorator Functions------------------------------------------------------------------------------------------------------------------------------------------------
+
+def rm_onerror(func, path, info):
+    # Check For Write Permissions
+    if (not(os.access(path, os.W_OK))):
+        # Enable Write Permissions
+        enable_write_perms(path)
+
+        # Execute Callback Function
+        func(path)
+    else:
+        # Raise Non-Access Error
+        raise
+
+# End Callback Functions-------------------------------------------------------------------------------------------------------------------------------------------------
 
 def expand_path(path):
     # Expand Path Symbols
@@ -98,6 +80,23 @@ def componentize_path(path):
     # Return Path Components
     return (path, path_bname, path_fname)
 
+# End Path Functions-----------------------------------------------------------------------------------------------------------------------------------------------------
+
+def enable_write_perms(path):
+    # Set File Write Permission Bits
+    os.chmod(path, 0o755)
+
+def disable_write_perms(path):
+    # Set File Write Permission Bits
+    os.chmod(path, 0o555)
+
+def get_file_size(path):
+    # Get File Statistics
+    file_stat = os.stat(path)
+
+    # Return File Size
+    return (file_stat.st_size)
+
 def get_dir_size(path):
     # Initialize Directory Size
     dir_size = 0
@@ -122,34 +121,7 @@ def get_dir_size(path):
     # Return Directory Size
     return (dir_size)
 
-def get_file_size(path):
-    # Get File Statistics
-    file_stat = os.stat(path)
-
-    # Return File Size
-    return (file_stat.st_size)
-
-def enable_write_perms(path):
-    # Set File Write Permission Bits
-    os.chmod(path, 0o755)
-
-def disable_write_perms(path):
-    # Set File Write Permission Bits
-    os.chmod(path, 0o555)
-
-def rm_onerror(func, path, info):
-    # Check For Write Permissions
-    if (not(os.access(path, os.W_OK))):
-        # Enable Write Permissions
-        enable_write_perms(path)
-
-        # Execute Callback Function
-        func(path)
-    else:
-        # Raise Non-Access Error
-        raise
-
-# End Helper Functions---------------------------------------------------------------------------------------------------------------------------------------------------
+# End File Functions-----------------------------------------------------------------------------------------------------------------------------------------------------
 
 @sanity_checks
 def create(link_path):
@@ -172,7 +144,7 @@ def create(link_path):
     # Form Enclosing Path Until Unique
     while (True):
         # Form Path To Enclosing Directory
-        enc_path = os.path.join(__ANNEXFS_ROOT_PATH, id.generate(link_path))
+        enc_path = os.path.join(__ANNEXFS_ROOT, id.generate(link_path))
 
         # Verify Enclosing Path Is Unique
         if (not(os.path.exists(enc_path))):
@@ -229,7 +201,7 @@ def delete(link_path):
     dst_path = os.path.realpath(link_path)
 
     # Verify Destination Path Is An Internal Symbolic Link
-    if (not(os.path.islink(link_path) and dst_path.startswith(__ANNEXFS_ROOT_PATH))):
+    if (not(os.path.islink(link_path) and dst_path.startswith(__ANNEXFS_ROOT))):
         # Return Error
         return (ValueError(f"destination path {cli.U}{link_path}{cli.N} is not an internal symbolic link"))
 
@@ -291,7 +263,7 @@ def transfer_from(src_path):
     # Form Enclosing Path Until Unique
     while (True):
         # Form Path To Enclosing Directory
-        enc_path = os.path.join(__ANNEXFS_ROOT_PATH, id.generate(src_path))
+        enc_path = os.path.join(__ANNEXFS_ROOT, id.generate(src_path))
 
         # Verify Enclosing Path Is Unique
         if (not(os.path.exists(enc_path))):
@@ -443,7 +415,7 @@ def transfer_to(dst_path):
     src_path = os.path.realpath(dst_path)
 
     # Verify Destination Path Is An Internal Symbolic Link
-    if (not(os.path.islink(dst_path) and src_path.startswith(__ANNEXFS_ROOT_PATH))):
+    if (not(os.path.islink(dst_path) and src_path.startswith(__ANNEXFS_ROOT))):
         # Return Error
         return (ValueError(f"destination path {cli.U}{dst_path}{cli.N} is not an internal symbolic link"))
 

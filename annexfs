@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Script Root Directory
+# Get Script Root Directory
 readonly ROOT_DIR=$(command cd -- "$(command dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && command pwd)
 
 # Start AnnexFS Program
