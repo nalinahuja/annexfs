@@ -17,6 +17,27 @@ __ANNEXFS_ROOT = config.mdata["ANNEXFS_ROOT"]
 
 # End Constants----------------------------------------------------------------------------------------------------------------------------------------------------------
 
+def sanity_checks(func):
+    # Verify AnnexFS Root Path Is Set
+    if (__ANNEXFS_ROOT is None):
+        # Raise Error
+        raise ValueError(f"annexfs root is {cli.U}{__ANNEXFS_ROOT}{cli.N}")
+
+    # Verify AnnexFS Root Exists
+    elif (not(os.path.exists(__ANNEXFS_ROOT))):
+        # Raise Error
+        raise FileNotFoundError(f"annexfs root {cli.U}{__ANNEXFS_ROOT}{cli.N} does not exist")
+
+    # Verify AnnexFS Root Is A Directory
+    elif (not(os.path.isdir(__ANNEXFS_ROOT))):
+        # Raise Error
+        raise NotADirectoryError(f"annexfs root {cli.U}{__ANNEXFS_ROOT}{cli.N} is not a directory")
+
+    # Return Callback Function
+    return (func)
+
+# End Decorator Functions------------------------------------------------------------------------------------------------------------------------------------------------
+
 def expand_path(path):
     # Expand Path Symbols
     path = os.path.expanduser(path)
@@ -83,25 +104,6 @@ def enable_write_perms(path):
 def disable_write_perms(path):
     # Set File Write Permission Bits
     os.chmod(path, 0o555)
-
-def sanity_checks(func):
-    # Verify AnnexFS Root Path Is Set
-    if (__ANNEXFS_ROOT is None):
-        # Raise Error
-        raise ValueError(f"annexfs root is {cli.U}{__ANNEXFS_ROOT}{cli.N}")
-
-    # Verify AnnexFS Root Exists
-    elif (not(os.path.exists(__ANNEXFS_ROOT))):
-        # Raise Error
-        raise FileNotFoundError(f"annexfs root {cli.U}{__ANNEXFS_ROOT}{cli.N} does not exist")
-
-    # Verify AnnexFS Root Is A Directory
-    elif (not(os.path.isdir(__ANNEXFS_ROOT))):
-        # Raise Error
-        raise NotADirectoryError(f"annexfs root {cli.U}{__ANNEXFS_ROOT}{cli.N} is not a directory")
-
-    # Return Callback Function
-    return (func)
 
 def rm_onerror(func, path, info):
     # Check For Write Permissions
@@ -195,7 +197,7 @@ def delete(link_path):
     dst_path = os.path.realpath(link_path)
 
     # Verify Destination Path Is An Internal Symbolic Link
-    if (not(os.path.islink(link_path)) or not(dst_path.startswith(__ANNEXFS_ROOT))):
+    if (not(os.path.islink(link_path) and dst_path.startswith(__ANNEXFS_ROOT))):
         # Return Error
         return (ValueError(f"destination path {cli.U}{link_path}{cli.N} is not an internal symbolic link"))
 
@@ -249,10 +251,10 @@ def transfer_from(src_path):
         # Return Error
         return (FileNotFoundError(f"source path {cli.U}{src_path}{cli.N} does not exist"))
 
-    # Verify Source Path Is An External Symbolic Link
-    elif (os.path.islink(src_path) and os.path.realpath(src_path).startswith(__ANNEXFS_ROOT)):
+    # Verify Source Path Is Not A Symbolic Link
+    if (os.path.islink(src_path)):
         # Return Error
-        return (ValueError(f"source path {cli.U}{src_path}{cli.N} is not an external symbolic link"))
+        return (ValueError(f"source path {cli.U}{src_path}{cli.N} is a symbolic link"))
 
     # Form Enclosing Path Until Unique
     while (True):
@@ -409,7 +411,7 @@ def transfer_to(dst_path):
     src_path = os.path.realpath(dst_path)
 
     # Verify Destination Path Is An Internal Symbolic Link
-    if (not(os.path.islink(dst_path)) or not(src_path.startswith(__ANNEXFS_ROOT))):
+    if (not(os.path.islink(dst_path) and src_path.startswith(__ANNEXFS_ROOT))):
         # Return Error
         return (ValueError(f"destination path {cli.U}{dst_path}{cli.N} is not an internal symbolic link"))
 
